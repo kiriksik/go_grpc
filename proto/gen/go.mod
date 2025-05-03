@@ -1,9 +1,8 @@
-module github.com/kiriksik/go_grpc
+module grpc_auth
 
 go 1.24.1
 
 require (
-	github.com/lib/pq v1.10.9
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
 )
