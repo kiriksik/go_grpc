@@ -1,27 +1,59 @@
 package main
 
 import (
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/kiriksik/go_grpc/internal/app"
+	"github.com/kiriksik/go_grpc/internal/config"
 	_ "github.com/lib/pq"
 )
 
+const (
+	envLocal = "local"
+	envDev   = "dev"
+	envProd  = "prod"
+)
+
 func main() {
-	// err := godotenv.Load(".env")
-	// if err != nil {
-	// 	log.Fatalf("failed loading enviroment: %s", err)
-	// }
+	cfg := config.MustLoad()
+	// fmt.Println(cfg)
 
-	// apiCfg := config.InitializeApiConfig()
+	log := setupLogger(cfg.Env)
+	log.Info("starting app", slog.Any("config", cfg))
 
-	// serveMux := handler.InitializeMux(apiCfg)
-	// serverPort := os.Getenv("SERVER_PORT")
-	// httpServer := http.Server{
-	// 	Addr:    serverPort,
-	// 	Handler: serveMux,
-	// }
-	// log.Println("server started on port", serverPort)
-	// err = httpServer.ListenAndServe()
-	// if err != nil {
-	// 	log.Fatalf("Server failed: %s", err)
-	// }
+	ssoApp := app.New(log, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL)
+	go ssoApp.GRPCSrv.MustRun() //gRPC
 
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	<-stop
+	ssoApp.GRPCSrv.Stop()
+	log.Info("application stopped")
+}
+
+func setupLogger(env string) *slog.Logger {
+	var log *slog.Logger
+
+	switch env {
+	case envLocal:
+		log = slog.New(
+			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+		)
+	case envDev:
+		{
+			log = slog.New(
+				slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+			)
+		}
+	case envProd:
+		log = slog.New(
+			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
+		)
+	}
+
+	return log
 }

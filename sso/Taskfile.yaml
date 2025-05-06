@@ -1,0 +1,18 @@
+version: "3"
+
+tasks:
+  migrate:
+      aliases:
+        - mig
+      desc: "Migrates db"
+      cmds:
+        - go run ./cmd/migrator --storage-path=./storage/sso.db --migrations-path=./migrations
+  run:
+    aliases:
+      - r
+    desc: "Run app"
+    cmds:
+      - go run ./cmd/sso --config=./config/local.yaml
+
+
+    
